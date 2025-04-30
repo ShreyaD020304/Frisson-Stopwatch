@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stopwatch</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: inline-block;
+            backdrop-filter: blur(10px);
+        }
+        #display {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #fff;
+        }
+        .buttons {
+            margin-top: 15px;
+        }
+        button {
+            margin: 5px;
+            padding: 12px 18px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s ease-in-out;
+            font-weight: bold;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #start {
+            background: #28a745;
+            color: white;
+        }
+        #pause {
+            background: #ffc107;
+            color: black;
+        }
+        #reset {
+            background: #dc3545;
+            color: white;
+        }
+        #export {
+            background: #007bff;
+            color: white;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        #splits {
+            margin-top: 20px;
+            text-align: left;
+            max-width: 350px;
+            margin-left: auto;
+            margin-right: auto;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            background: rgba(255, 255, 255, 0.3);
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 14px;
+            color: white;
+        }
+        p {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Stopwatch</h1>
+        <div id="display">00:00:05.00</div>
+        <div class="buttons">
+            <button id="start">Start</button>
+            <button id="pause" disabled>Stop</button>
+            <button id="reset" disabled>Reset</button>
+            <button id="export">Export Data</button>
+        </div>
+        <p>Press "Enter" to Start/Stop | Press "Space" to Record Physical Response</p>
+        <div id="splits">
+            <h2>Physical Response Timings</h2>
+            <ul id="splitList"></ul>
+        </div>
+    </div>
+
+    <script>
+        let startTime = 0, elapsedTime = 0, timerInterval, lastSplitTime = 0;
+        let running = false, splitCount = 0;
+        let splits = [];
+        let countdownActive = false;
+        let stopTime = null;
+
+        function formatTime(ms) {
+            let totalSeconds = Math.floor(ms / 1000);
+            let milliseconds = (ms % 1000) / 10;
+            let seconds = totalSeconds % 60;
+            let minutes = Math.floor(totalSeconds / 60) % 60;
+            let hours = Math.floor(totalSeconds / 3600);
+            return (
+                (hours < 10 ? "0" : "") + hours + ":" +
+                (minutes < 10 ? "0" : "") + minutes + ":" +
+                (seconds < 10 ? "0" : "") + seconds + "." +
+                (milliseconds < 10 ? "0" : "") + Math.floor(milliseconds)
+            );
+        }
+
+        function updateTime() {
+            elapsedTime = Date.now() - startTime;
+            document.getElementById("display").textContent = formatTime(elapsedTime);
+        }
+
+        function startCountdown() {
+            if (running || countdownActive) return;
+            countdownActive = true;
+            let countdown = 5;
+            document.getElementById("display").textContent = "00:00:05.00";
+            let countdownInterval = setInterval(() => {
+                countdown--;
+                document.getElementById("display").textContent = formatTime(countdown * 1000);
+                if (countdown === 0) {
+                    clearInterval(countdownInterval);
+                    startTime = Date.now();
+                    timerInterval = setInterval(updateTime, 10);
+                    running = true;
+                    countdownActive = false;
+                    document.getElementById("pause").disabled = false;
+                    document.getElementById("reset").disabled = false;
+                    document.getElementById("start").disabled = true;
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            if (running) {
+                clearInterval(timerInterval);
+                running = false;
+                stopTime = Date.now();
+                document.getElementById("start").disabled = false;
+                document.getElementById("pause").disabled = true;
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            elapsedTime = 0;
+            running = false;
+            splitCount = 0;
+            splits = [];
+            lastSplitTime = 0;
+            countdownActive = false;
+            document.getElementById("display").textContent = "00:00:05.00";
+            document.getElementById("splitList").innerHTML = "";
+            document.getElementById("start").disabled = false;
+            document.getElementById("pause").disabled = true;
+            document.getElementById("reset").disabled = true;
+        }
+
+        function recordSplit() {
+            if (running) {
+                let currentTime = elapsedTime;
+                let splitTime = currentTime - lastSplitTime;
+                lastSplitTime = currentTime;
+                let timestamp = formatTime(currentTime);
+                let splitDuration = formatTime(splitTime);
+                let localTime = new Date().toLocaleTimeString();
+                let label = (splitCount % 2 === 0) ? "Physical Response Start" : "Physical Response Stop";
+                splitCount++;
+                let entry = `${label}: ${timestamp} (Δ ${splitDuration}) - Local Time: ${localTime}`;
+                splits.push(entry);
+                let li = document.createElement("li");
+                li.textContent = entry;
+                document.getElementById("splitList").appendChild(li);
+            }
+        }
+
+        function exportData() {
+            let fileName = prompt("Enter a filename:", "stopwatch_data");
+            if (!fileName) fileName = "stopwatch_data";
+            
+            let content = "Stopwatch Session Data\n\n";
+            
+            // Add basic session information
+            if (typeof startTime === "number" && !isNaN(startTime)) {
+                content += `Start Time: ${new Date(startTime).toLocaleString()}\n`;
+            } else {
+                content += "Start Time: Not Available\n";
+            }
+            
+            if (typeof stopTime === "number" && !isNaN(stopTime)) {
+                content += `Stop Time: ${new Date(stopTime).toLocaleString()}\n`;
+            } else {
+                content += "Stop Time: Not Available\n";
+            }
+            
+            if (startTime && stopTime) {
+                content += `Total Duration: ${formatTime(stopTime - startTime)}\n`;
+            }
+            
+            // Add splits if they exist
+            if (splits.length > 0) {
+                content += "\nPhysical Response Timings:\n" + splits.join("\n");
+            } else {
+                content += "\nNo physical responses were recorded during this session.";
+            }
+            
+            // Create and download the file
+            let blob = new Blob([content], { type: "text/plain" });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName + ".txt";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        document.getElementById("export").addEventListener("click", exportData);
+        document.getElementById("start").addEventListener("click", startCountdown);
+        document.getElementById("pause").addEventListener("click", pauseTimer);
+        document.getElementById("reset").addEventListener("click", resetTimer);
+        
+        document.addEventListener("keydown", function(event) {
+            if (event.code === "Enter") {
+                running ? pauseTimer() : startCountdown();
+            } else if (event.code === "Space") {
+                recordSplit();
+            }
+        });
+    </script>
+</body>
+</html>
