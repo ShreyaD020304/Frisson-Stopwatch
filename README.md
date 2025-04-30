@@ -1,4 +1,4 @@
-# Interactive Stopwatch with Physical Response Tracking ⏱️💙
+# Interactive Frisson Stopwatch ⏱️💙
 
 This is a simple and interactive stopwatch web application that allows users to time events and record self-reported frisson timings. It features a countdown before starting, clear controls, and the ability to export the recorded data.
 
